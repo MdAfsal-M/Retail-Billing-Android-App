@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvProductName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Product Name"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"/>
+
+    <RadioGroup
+        android:id="@+id/radioGroupUnit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/radioKg"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="KG"
+            android:checked="true"/>
+
+        <RadioButton
+            android:id="@+id/radioBag"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Bag"/>
+    </RadioGroup>
+
+    <!-- Quantity in KG -->
+    <LinearLayout
+        android:id="@+id/layoutKg"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Quantity (kg)"
+            android:textSize="14sp"/>
+
+        <EditText
+            android:id="@+id/etKgQuantity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:padding="8dp"
+            android:background="@drawable/edit_text_bg"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- Bag options -->
+    <LinearLayout
+        android:id="@+id/layoutBag"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Number of Bags"
+            android:textSize="14sp"/>
+
+        <EditText
+            android:id="@+id/etBagCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:padding="8dp"
+            android:background="@drawable/edit_text_bg"
+            android:layout_marginTop="4dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bag Size (kg)"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"/>
+
+        <Spinner
+            android:id="@+id/spinnerBagSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- Price label with ID -->
+    <TextView
+        android:id="@+id/tvPriceLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Price per kg (₹)"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp"/>
+
+    <EditText
+        android:id="@+id/etPrice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="numberDecimal"
+        android:padding="8dp"
+        android:background="@drawable/edit_text_bg"
+        android:layout_marginTop="4dp"/>
+
+    <!-- Calculated Amount -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Amount:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"/>
+
+    <TextView
+        android:id="@+id/tvCalculatedAmount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="₹0.00"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/accent_color"
+        android:gravity="end"/>
+
+    <Button
+        android:id="@+id/btnAddToBill"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Add to Bill"
+        android:backgroundTint="@color/primary_color"
+        android:layout_marginTop="16dp"/>
+
+</LinearLayout>

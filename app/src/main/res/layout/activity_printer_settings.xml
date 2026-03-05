@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/light_background">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Printer Settings"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="@color/primary_color"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- WiFi Printer Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="WiFi Printer"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/etWifiIp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="IP Address (e.g., 192.168.1.100)"
+        android:padding="12dp"
+        android:background="@drawable/edit_text_bg"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/etWifiPort"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Port (usually 9100)"
+        android:inputType="number"
+        android:padding="12dp"
+        android:background="@drawable/edit_text_bg"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnSaveWifi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save WiFi Settings"
+        android:backgroundTint="#4CAF50"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- Number of Copies Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Print Copies"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/etCopies"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Number of copies (1-5)"
+        android:inputType="number"
+        android:padding="12dp"
+        android:background="@drawable/edit_text_bg"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnSaveCopies"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Copies Setting"
+        android:backgroundTint="#FF9800"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- Bluetooth Printer Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bluetooth Printer"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnScanBluetooth"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Scan for Bluetooth Devices"
+        android:backgroundTint="#2196F3"
+        android:layout_marginBottom="8dp"/>
+
+    <ListView
+        android:id="@+id/listBluetoothDevices"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/tvSelectedBluetooth"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No printer selected"
+        android:padding="8dp"
+        android:background="@drawable/edit_text_bg"/>
+
+</LinearLayout>
