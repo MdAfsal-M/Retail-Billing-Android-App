@@ -27,21 +27,25 @@
             android:layout_height="wrap_content"
             android:textColor="@android:color/white"
             android:textSize="14sp"/>
+
+        <TextView
+            android:id="@+id/tvBillNumber"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- Search Bar -->
-    <EditText
-        android:id="@+id/etSearch"
+    <!-- Search Button -->
+    <Button
+        android:id="@+id/btnSearch"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Search products..."
+        android:text="Search Products"
         android:padding="12dp"
-        android:background="@drawable/edit_text_bg"
-        android:layout_margin="8dp"
-        android:drawableStart="@android:drawable/ic_menu_search"
-        android:drawablePadding="8dp"
-        android:inputType="text"
-        android:maxLines="1"/>
+        android:backgroundTint="@color/accent_color"
+        android:layout_margin="8dp"/>
 
     <!-- Product Grid -->
     <TextView

@@ -7,6 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -38,9 +43,10 @@ class BillActivity : AppCompatActivity() {
     private lateinit var etDiscount: EditText
     private lateinit var tvGrandTotal: TextView
     private lateinit var tvDate: TextView
+    private lateinit var tvBillNumber: TextView
     private lateinit var btnPrint: Button
     private lateinit var btnPreview: Button
-    private lateinit var etSearch: EditText   // Added
+    private lateinit var btnSearch: Button
 
     private val billItems = mutableListOf<BillItem>()
     private lateinit var billAdapter: BillAdapter
@@ -50,10 +56,13 @@ class BillActivity : AppCompatActivity() {
 
     private lateinit var db: AppDatabase
     private lateinit var products: List<Product>
-    private var allProducts: List<Product> = listOf()   // Full list
+    private var allProducts: List<Product> = listOf()
 
     private val REQUEST_BLUETOOTH_PERMISSION = 100
-    private val bagSizes = arrayOf(1, 2, 5, 10, 26, 30, 50)  // Added 26 kg
+    private val REQUEST_SEARCH = 200
+    private val bagSizes = arrayOf(5, 10, 25, 26, 30, 50)
+
+    private var currentBillNumber = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +72,7 @@ class BillActivity : AppCompatActivity() {
 
         initViews()
         setupDate()
+        setupBillNumber()
         setupRecyclerView()
         setupTaxDiscountListeners()
 
@@ -71,6 +81,10 @@ class BillActivity : AppCompatActivity() {
 
         btnPrint.setOnClickListener { showPrintOptions() }
         btnPreview.setOnClickListener { showBillPreview() }
+        btnSearch.setOnClickListener {
+            val intent = Intent(this, SearchActivity::class.java)
+            startActivityForResult(intent, REQUEST_SEARCH)
+        }
 
         requestBluetoothPermissions()
     }
@@ -88,9 +102,10 @@ class BillActivity : AppCompatActivity() {
         etDiscount = findViewById(R.id.etDiscount)
         tvGrandTotal = findViewById(R.id.tvGrandTotal)
         tvDate = findViewById(R.id.tvDate)
+        tvBillNumber = findViewById(R.id.tvBillNumber)
         btnPrint = findViewById(R.id.btnPrint)
         btnPreview = findViewById(R.id.btnPreview)
-        etSearch = findViewById(R.id.etSearch)   // Initialize
+        btnSearch = findViewById(R.id.btnSearch)
 
         productGrid.layoutManager = GridLayoutManager(this, 2)
     }
@@ -98,6 +113,34 @@ class BillActivity : AppCompatActivity() {
     private fun setupDate() {
         val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
         tvDate.text = "Date: $date"
+    }
+
+    private fun setupBillNumber() {
+        val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        val lastDate = sharedPref.getString("last_bill_date", "")
+        val nextNumber = sharedPref.getInt("next_bill_number", 1)
+
+        currentBillNumber = if (today == lastDate) {
+            nextNumber
+        } else {
+            sharedPref.edit().apply {
+                putString("last_bill_date", today)
+                putInt("next_bill_number", 1)
+                apply()
+            }
+            1
+        }
+        tvBillNumber.text = "Bill #$currentBillNumber"
+    }
+
+    private fun incrementBillNumber() {
+        val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        val next = sharedPref.getInt("next_bill_number", 1) + 1
+        sharedPref.edit().apply {
+            putString("last_bill_date", today)
+            putInt("next_bill_number", next)
+            apply()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -135,31 +178,8 @@ class BillActivity : AppCompatActivity() {
                 allProducts = productList
                 products = productList
                 setupProductGrid()
-
-                // Add search listener
-                etSearch.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                    override fun afterTextChanged(s: Editable?) {
-                        filterProducts(s.toString())
-                    }
-                })
             }
         }
-    }
-
-    private fun filterProducts(query: String) {
-        val filtered = if (query.isEmpty()) {
-            allProducts
-        } else {
-            allProducts.filter { it.name.contains(query, ignoreCase = true) }
-        }
-        products = filtered
-        // Refresh the grid adapter
-        val adapter = ProductGridAdapter(products) { product ->
-            showProductDialog(product)
-        }
-        productGrid.adapter = adapter
     }
 
     private fun setupProductGrid() {
@@ -167,6 +187,19 @@ class BillActivity : AppCompatActivity() {
             showProductDialog(product)
         }
         productGrid.adapter = adapter
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_SEARCH && resultCode == RESULT_OK) {
+            val productId = data?.getIntExtra("product_id", -1) ?: -1
+            if (productId != -1) {
+                val product = allProducts.find { it.id == productId }
+                if (product != null) {
+                    showProductDialog(product)
+                }
+            }
+        }
     }
 
     private fun showProductDialog(product: Product) {
@@ -187,12 +220,10 @@ class BillActivity : AppCompatActivity() {
 
         tvProductName.text = product.name
 
-        // Setup bag size spinner
         val bagSizeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, bagSizes.map { "$it kg" })
         bagSizeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerBagSize.adapter = bagSizeAdapter
 
-        // Handle unit change
         radioGroup.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.radioKg -> {
@@ -209,7 +240,6 @@ class BillActivity : AppCompatActivity() {
             updateCalculatedAmount(dialogView)
         }
 
-        // Listeners for input changes
         val textWatcher = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -346,6 +376,214 @@ class BillActivity : AppCompatActivity() {
         return copiesStr.toIntOrNull() ?: 1
     }
 
+    // ==================== TAMIL PRINTING SUPPORT ====================
+
+    private fun containsTamil(text: String): Boolean {
+        return text.any { it in '\u0B80'..'\u0BFF' }
+    }
+
+    private fun textToBitmap(text: String, paint: Paint): Bitmap {
+        val bounds = android.graphics.Rect()
+        paint.getTextBounds(text, 0, text.length, bounds)
+
+        val bitmap = Bitmap.createBitmap(
+            bounds.width() + 10,
+            bounds.height() + 10,
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+        canvas.drawText(text, 5f, -bounds.top.toFloat() + 5f, paint)
+        return bitmap
+    }
+
+    private fun printBitmap(outputStream: OutputStream, bitmap: Bitmap) {
+        val width = bitmap.width
+        val height = bitmap.height
+
+        val bytesPerLine = (width + 7) / 8
+        val data = ByteArray(bytesPerLine * height)
+
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val pixel = bitmap.getPixel(x, y)
+                val isBlack = Color.red(pixel) < 128
+                if (!isBlack) {
+                    val byteIndex = y * bytesPerLine + (x / 8)
+                    val bitPosition = 7 - (x % 8)
+                    data[byteIndex] = (data[byteIndex].toInt() or (1 shl bitPosition)).toByte()
+                }
+            }
+        }
+
+        // ESC/POS command for raster bit image
+        outputStream.write(0x1D)
+        outputStream.write(0x76)
+        outputStream.write(0x30)
+        outputStream.write(0x00)
+        outputStream.write(bytesPerLine % 256)
+        outputStream.write(bytesPerLine / 256)
+        outputStream.write(height % 256)
+        outputStream.write(height / 256)
+        outputStream.write(data)
+        outputStream.flush()
+    }
+
+    private fun printWithTamilSupport(outputStream: OutputStream) {
+        try {
+            // Initialize printer
+            outputStream.write(byteArrayOf(0x1B, 0x40)) // ESC @
+
+            // Center align
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // ESC a 1
+
+            // Build bill lines
+            val (englishText, tamilLines) = buildBillTextWithTamil()
+
+            // Print English part as normal text
+            outputStream.write(englishText.toByteArray(Charsets.UTF_8))
+
+            // Set up paint for Tamil text
+            val tamilPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 28f
+                typeface = Typeface.DEFAULT
+            }
+
+            // Print each Tamil line as bitmap
+            for (tamilLine in tamilLines) {
+                val bitmap = textToBitmap(tamilLine, tamilPaint)
+                printBitmap(outputStream, bitmap)
+                outputStream.write("\n".toByteArray())
+            }
+
+            // Cut paper
+            outputStream.write(byteArrayOf(0x1D, 0x56, 0x01)) // GS V 1
+
+            outputStream.flush()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun buildBillTextWithTamil(): Pair<String, List<String>> {
+        val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+        val englishLines = mutableListOf<String>()
+        val tamilLines = mutableListOf<String>()
+
+        englishLines.add("      Gani Anbu Store")
+        englishLines.add("         Dindigul")
+        englishLines.add("Phone: 9842125936,8870430799")
+        englishLines.add("----------------------")
+        englishLines.add("Date: $date")
+        englishLines.add("Bill #$currentBillNumber")
+        englishLines.add("----------------------")
+        englishLines.add(String.format("%-16s %8s %8s %8s", "Item", "Qty", "Price", "Amount"))
+        englishLines.add("----------------------")
+
+        for (item in billItems) {
+            val itemName = item.productName.take(14)
+            var qtyStr = ""
+            var priceToShow = 0.0
+            if (item.unit == "kg") {
+                qtyStr = "%.2f kg".format(item.quantity)
+                priceToShow = item.unitPrice
+            } else {
+                val bags = (item.quantity / (item.bagSize ?: 1.0)).toInt()
+                qtyStr = "$bags bags"
+                priceToShow = item.bagPrice ?: (item.unitPrice * (item.bagSize ?: 1.0))
+            }
+
+            val line = String.format("%-16s %8s %8.2f %8.2f",
+                itemName, qtyStr, priceToShow, item.amount)
+
+            if (containsTamil(line)) {
+                tamilLines.add(line)
+            } else {
+                englishLines.add(line)
+            }
+        }
+
+        englishLines.add("----------------------")
+        englishLines.add(String.format("%-24s %8.2f", "Subtotal:", subtotal))
+        val taxAmount = subtotal * taxPercent / 100
+        englishLines.add(String.format("%-24s %8.2f", "Tax (${taxPercent}%):", taxAmount))
+        englishLines.add(String.format("%-24s %8.2f", "Discount:", discount))
+        englishLines.add("----------------------")
+        val grandTotal = subtotal + taxAmount - discount
+        englishLines.add(String.format("%-24s %8.2f", "Grand Total:", grandTotal))
+        englishLines.add("----------------------")
+        englishLines.add("  Thank you, visit again!")
+        englishLines.add("\n\n\n")
+
+        return Pair(englishLines.joinToString("\n"), tamilLines)
+    }
+
+    // ==================== END OF TAMIL SUPPORT ====================
+
+    // ==================== DELIVERY SLIP FUNCTIONS ====================
+
+    private fun hasBagItems(): Boolean {
+        return billItems.any { it.unit == "bag" }
+    }
+
+    private fun getBagItems(): List<BillItem> {
+        return billItems.filter { it.unit == "bag" }
+    }
+
+    private fun buildDeliverySlipText(): String {
+        val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+        val bagItems = getBagItems()
+        val totalBags = bagItems.sumOf { (it.quantity / (it.bagSize ?: 1.0)).toInt() }
+
+        val sb = StringBuilder()
+
+        sb.appendLine("      Gani Anbu Store")
+        sb.appendLine("         Dindigul")
+        sb.appendLine("----------------------")
+        sb.appendLine("📦 Delivery Slip")
+        sb.appendLine("Date: $date")
+        sb.appendLine("Bill #$currentBillNumber")
+        sb.appendLine("----------------------")
+
+        sb.appendLine(String.format("%-20s %5s", "Item", "Bags"))
+        sb.appendLine("----------------------")
+
+        for (item in bagItems) {
+            val itemName = item.productName.take(18)
+            val bags = (item.quantity / (item.bagSize ?: 1.0)).toInt()
+            sb.appendLine(String.format("%-20s %5d", itemName, bags))
+        }
+
+        sb.appendLine("----------------------")
+        sb.appendLine(String.format("%-20s %5d", "Total Bags:", totalBags))
+        sb.appendLine("----------------------")
+        sb.appendLine("  Thank you!")
+        sb.appendLine("\n\n")
+
+        return sb.toString()
+    }
+
+    private fun printDeliverySlip(outputStream: OutputStream) {
+        if (!hasBagItems()) {
+            return
+        }
+
+        val deliveryText = buildDeliverySlipText()
+
+        try {
+            outputStream.write(byteArrayOf(0x1B, 0x40)) // ESC @
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // Center align
+            outputStream.write(deliveryText.toByteArray(Charsets.UTF_8))
+            outputStream.write(byteArrayOf(0x1D, 0x56, 0x01)) // Cut paper
+            outputStream.flush()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+
+    // ==================== END OF DELIVERY SLIP FUNCTIONS ====================
+
     private fun printViaBluetooth() {
         val mac = sharedPref.getString("bluetooth_mac", "") ?: ""
         if (mac.isEmpty()) {
@@ -386,15 +624,28 @@ class BillActivity : AppCompatActivity() {
                 )
                 socket.connect()
                 val outputStream = socket.outputStream
-                val billText = buildBillText()
+
                 for (i in 1..copies) {
-                    sendEscPosCommands(outputStream, billText)
+                    printWithTamilSupport(outputStream)
                     if (i < copies) delay(500)
                 }
+
+                if (hasBagItems()) {
+                    printDeliverySlip(outputStream)
+                }
+
                 outputStream.close()
                 socket.close()
+
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@BillActivity, "Bill printed ($copies copies)", Toast.LENGTH_SHORT).show()
+                    val message = if (hasBagItems()) {
+                        "Bill printed ($copies copies) + Delivery Slip printed"
+                    } else {
+                        "Bill printed ($copies copies)"
+                    }
+                    Toast.makeText(this@BillActivity, message, Toast.LENGTH_SHORT).show()
+                    incrementBillNumber()
+                    goToHome()
                 }
             } catch (e: IOException) {
                 e.printStackTrace()
@@ -419,15 +670,28 @@ class BillActivity : AppCompatActivity() {
             try {
                 val socket = Socket(ip, port)
                 val outputStream = socket.getOutputStream()
-                val billText = buildBillText()
+
                 for (i in 1..copies) {
-                    sendEscPosCommands(outputStream, billText)
+                    printWithTamilSupport(outputStream)
                     if (i < copies) delay(500)
                 }
+
+                if (hasBagItems()) {
+                    printDeliverySlip(outputStream)
+                }
+
                 outputStream.close()
                 socket.close()
+
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@BillActivity, "Bill printed ($copies copies)", Toast.LENGTH_SHORT).show()
+                    val message = if (hasBagItems()) {
+                        "Bill printed ($copies copies) + Delivery Slip printed"
+                    } else {
+                        "Bill printed ($copies copies)"
+                    }
+                    Toast.makeText(this@BillActivity, message, Toast.LENGTH_SHORT).show()
+                    incrementBillNumber()
+                    goToHome()
                 }
             } catch (e: IOException) {
                 e.printStackTrace()
@@ -438,72 +702,27 @@ class BillActivity : AppCompatActivity() {
         }
     }
 
+    private fun goToHome() {
+        val intent = Intent(this, HomeActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
+    }
+
     private fun showBillPreview() {
         if (billItems.isEmpty()) {
             Toast.makeText(this, "No items to preview", Toast.LENGTH_SHORT).show()
             return
         }
-        val billText = buildBillText()
+
+        val (englishText, tamilLines) = buildBillTextWithTamil()
+        val fullText = englishText + "\n" + tamilLines.joinToString("\n")
+
         AlertDialog.Builder(this)
             .setTitle("Bill Preview")
-            .setMessage(billText)
+            .setMessage(fullText)
             .setPositiveButton("Close", null)
             .show()
-    }
-
-    private fun buildBillText(): String {
-        val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-        val sb = StringBuilder()
-        sb.appendLine("      Gani Anbu Store")
-        sb.appendLine("         Dindigul")
-        sb.appendLine("Phone: 9842125936,8870430799")
-        sb.appendLine("----------------------")
-        sb.appendLine("Date: $date")
-        sb.appendLine("----------------------")
-        sb.appendLine(String.format("%-16s %8s %8s %8s", "Item", "Qty", "Price", "Amount"))
-        sb.appendLine("----------------------")
-        for (item in billItems) {
-            val itemName = item.productName.take(14)
-            var qtyStr = ""
-            var priceToShow = 0.0
-            if (item.unit == "kg") {
-                qtyStr = "%.2f kg".format(item.quantity)
-                priceToShow = item.unitPrice
-            } else {
-                val bags = (item.quantity / (item.bagSize ?: 1.0)).toInt()
-                qtyStr = "$bags bags"
-                priceToShow = item.bagPrice ?: (item.unitPrice * (item.bagSize ?: 1.0))
-            }
-            sb.appendLine(String.format("%-16s %8s %8.2f %8.2f",
-                itemName,
-                qtyStr,
-                priceToShow,
-                item.amount))
-        }
-        sb.appendLine("----------------------")
-        sb.appendLine(String.format("%-24s %8.2f", "Subtotal:", subtotal))
-        val taxAmount = subtotal * taxPercent / 100
-        sb.appendLine(String.format("%-24s %8.2f", "Tax (${taxPercent}%):", taxAmount))
-        sb.appendLine(String.format("%-24s %8.2f", "Discount:", discount))
-        sb.appendLine("----------------------")
-        val grandTotal = subtotal + taxAmount - discount
-        sb.appendLine(String.format("%-24s %8.2f", "Grand Total:", grandTotal))
-        sb.appendLine("----------------------")
-        sb.appendLine("  Thank you, visit again!")
-        sb.appendLine("\n\n\n")
-        return sb.toString()
-    }
-
-    private fun sendEscPosCommands(outputStream: OutputStream, text: String) {
-        try {
-            outputStream.write(byteArrayOf(0x1B, 0x40)) // ESC @
-            outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // Center align
-            outputStream.write(text.toByteArray(Charsets.UTF_8))
-            outputStream.write(byteArrayOf(0x1D, 0x56, 0x01)) // Cut paper
-            outputStream.flush()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
     }
 
     private fun requestBluetoothPermissions() {
